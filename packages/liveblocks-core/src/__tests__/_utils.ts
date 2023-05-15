@@ -244,7 +244,7 @@ export async function prepareRoomWithStorage<
   );
   const ws = new MockWebSocket();
 
-  room.__internal.send.connect();
+  room.connect();
   room.__internal.send.authSuccess(makeRoomToken(actor, scopes), ws);
   ws.serverSide.accept();
 
@@ -424,7 +424,7 @@ export async function prepareStorageTest<
   ): MockWebSocket {
     currentActor = actor;
     const ws = new MockWebSocket();
-    room.__internal.send.connect();
+    room.connect();
     room.__internal.send.authSuccess(makeRoomToken(actor, []), ws);
     ws.serverSide.accept();
 
@@ -585,7 +585,7 @@ export function reconnect<
   newItems: IdTuple<SerializedCrdt>[]
 ) {
   const ws = new MockWebSocket();
-  room.__internal.send.connect();
+  room.connect();
   room.__internal.send.authSuccess(makeRoomToken(actor, []), ws);
   ws.serverSide.accept();
 
@@ -653,11 +653,7 @@ export function mockEffects<
   TRoomEvent extends Json
 >(): Effects<TPresence, TRoomEvent> {
   return {
-    authenticateAndConnect: jest.fn(),
     send: jest.fn(),
-    scheduleReconnect: jest.fn(),
-    startHeartbeatInterval: jest.fn(),
-    schedulePongTimeout: jest.fn(),
   };
 }
 
