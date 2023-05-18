@@ -725,6 +725,7 @@ type RoomState<
 
 /** @internal */
 type Effects<TPresence extends JsonObject, TRoomEvent extends Json> = {
+  // XXX Remove Effects eventually
   send(messages: ClientMsg<TPresence, TRoomEvent>[]): void;
 };
 
@@ -776,6 +777,7 @@ type RoomConfig<TPresence extends JsonObject, TRoomEvent extends Json> = {
   unstable_batchedUpdates?: (cb: () => void) => void;
 
   mockedEffects?: Effects<TPresence, TRoomEvent>;
+  delegates: Delegates<RichToken>;
 };
 
 function userToTreeNode(
@@ -815,8 +817,8 @@ export function createRoom<
       ? options.initialStorage(config.roomId)
       : options.initialStorage;
 
-  // Create a delegate pair for (a specific) Live Room socket connection(s)
-  const delegates: Delegates<RichToken> = {
+  // Create a delegate pair for a specific Room socket connection
+  const delegates: Delegates<RichToken> = config.delegates ?? {
     authenticate: makeAuthDelegateForRoom(
       config.roomId,
       config.authentication,

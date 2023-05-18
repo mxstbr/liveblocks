@@ -5,7 +5,7 @@ import type { Json, JsonObject } from "../lib/Json";
 import { makePosition } from "../lib/position";
 import { remove } from "../lib/utils";
 import type { Authentication } from "../protocol/Authentication";
-import type { RoomAuthToken } from "../protocol/AuthToken";
+import type { RoomAuthToken, RichToken } from "../protocol/AuthToken";
 import type { BaseUserMeta } from "../protocol/BaseUserMeta";
 import type { ClientMsg } from "../protocol/ClientMsg";
 import { ClientMsgCode } from "../protocol/ClientMsg";
@@ -23,11 +23,13 @@ import { CrdtType } from "../protocol/SerializedCrdt";
 import type { ServerMsg } from "../protocol/ServerMsg";
 import { ServerMsgCode } from "../protocol/ServerMsg";
 import type { _private_Effects as Effects, Room } from "../room";
+import type { BaseAuthResult, Delegates } from "../connection";
 import { createRoom } from "../room";
 import type {
   IWebSocket,
   IWebSocketCloseEvent,
   IWebSocketEvent,
+  IWebSocketInstance,
   IWebSocketMessageEvent,
 } from "../types/IWebSocket";
 import type { JsonStorageUpdate } from "./_updatesUtils";
@@ -202,9 +204,12 @@ export const THIRD_POSITION = makePosition(SECOND_POSITION);
 export const FOURTH_POSITION = makePosition(THIRD_POSITION);
 export const FIFTH_POSITION = makePosition(FOURTH_POSITION);
 
-function makeRoomConfig<TPresence extends JsonObject, TRoomEvent extends Json>(
-  mockedEffects: Effects<TPresence, TRoomEvent>
-) {
+// XXX Remove Effects eventually
+function makeRoomConfig<
+  TPresence extends JsonObject,
+  TRoomEvent extends Json,
+  T extends BaseAuthResult
+>(mockedEffects: Effects<TPresence, TRoomEvent>, delegates: Delegates<T>) {
   return {
     roomId: "room-id",
     throttleDelay: -1, // No throttle for standard storage test
@@ -217,6 +222,58 @@ function makeRoomConfig<TPresence extends JsonObject, TRoomEvent extends Json>(
       WebSocket: MockWebSocket,
     },
     mockedEffects,
+    delegates,
+  };
+}
+
+function makeFakeRichToken(actor: number, scopes: string[]): RichToken {
+  const raw = "a fake JWT string value";
+  const parsed = {
+    ...makeRoomToken(actor, scopes),
+    iat: Date.now(),
+    exp: Date.now() + 60 * 60,
+  };
+  return { raw, parsed };
+}
+
+/**
+ * Generates an authentication function, suitable for initializing
+ * a ManagedSocket instance.
+ *
+ * This auth implementation will always succeed, and will authenticate as the
+ * given actor/scopes.
+ */
+function fakeAuthenticateAs(actor: number, scopes: string[]) {
+  return () => Promise.resolve(makeFakeRichToken(actor, scopes));
+}
+
+/**
+ * Helper class that will allow you to manage a series of WebSocket
+ * connections. Call `.newInstance()` to create a new mock WebSocket
+ * instance. You can access the last-created instance through `.current`. You
+ * can access _all_ historic instances through `.instances`.
+ */
+function socketFactory(
+  // XXX Make autoOpen the default?
+  autoOpen: boolean
+) {
+  const sockets: IWebSocketInstance[] = [];
+  return {
+    instances: sockets,
+
+    get current() {
+      const last = sockets[sockets.length - 1];
+      if (last === undefined) {
+        throw new Error("Create one first");
+      }
+      return last;
+    },
+
+    newInstance() {
+      const ws = new MockWebSocket("wss://ignored", autoOpen);
+      sockets.push(ws);
+      return ws;
+    },
   };
 }
 
@@ -235,27 +292,28 @@ export async function prepareRoomWithStorage<
   const effects = mockEffects();
   (effects.send as jest.MockedFunction<any>).mockImplementation(onSend);
 
+  const ws = socketFactory(/* autoOpen */ true);
+
   const room = createRoom<TPresence, TStorage, TUserMeta, TRoomEvent>(
     {
       initialPresence: {} as TPresence,
       initialStorage: defaultStorage || ({} as TStorage),
     },
-    makeRoomConfig(effects)
+    makeRoomConfig(effects, {
+      authenticate: fakeAuthenticateAs(actor, scopes),
+      createSocket: ws.newInstance,
+    })
   );
-  const ws = new MockWebSocket();
 
   room.connect();
-  room.__internal.send.authSuccess(makeRoomToken(actor, scopes), ws);
-  ws.serverSide.accept();
 
   // Start getting the storage, but don't await the promise just yet!
   const getStoragePromise = room.getStorage();
 
-  const clonedItems = deepClone(items);
-  room.__internal.send.incomingMessage(
-    serverMessage({
+  ws.current.send(
+    JSON.stringify({
       type: ServerMsgCode.INITIAL_STORAGE_STATE,
-      items: clonedItems,
+      items,
     })
   );
 
@@ -423,10 +481,9 @@ export async function prepareStorageTest<
     newItems?: IdTuple<SerializedCrdt>[] | undefined
   ): MockWebSocket {
     currentActor = actor;
-    const ws = new MockWebSocket();
+    const ws = socketFactory(true);
     room.connect();
     room.__internal.send.authSuccess(makeRoomToken(actor, []), ws);
-    ws.serverSide.accept();
 
     // Mock server messages for Presence.
     // Other user in the room (refRoom) recieves a "USER_JOINED" message.

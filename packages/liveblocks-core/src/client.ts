@@ -180,7 +180,8 @@ export function createClient(options: ClientOptions): Client {
         unstable_batchedUpdates: options?.unstable_batchedUpdates,
         liveblocksServer: getServerFromClientOptions(clientOptions),
         authentication: prepareAuthentication(clientOptions, roomId),
-      }
+      } as any
+      //   ^^^ XXX Make `delegates` optional again
     );
 
     rooms.set(roomId, newRoom);
