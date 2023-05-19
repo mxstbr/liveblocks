@@ -212,7 +212,7 @@ function makeRoomConfig<
   };
 }
 
-function makeFakeRichToken(actor: number, scopes: string[]): RichToken {
+export function makeFakeRichToken(actor: number, scopes: string[]): RichToken {
   const raw = "a fake JWT string value";
   const parsed = {
     ...makeRoomToken(actor, scopes),
