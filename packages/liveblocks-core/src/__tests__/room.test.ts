@@ -1289,14 +1289,20 @@ describe("room", () => {
 
   describe("offline", () => {
     test("disconnect and reconnect with offline changes", async () => {
-      const { storage, expectStorage, room, refStorage, reconnect, ws } =
-        await prepareStorageTest<{ items: LiveList<string> }>(
-          [
-            createSerializedObject("0:0", {}),
-            createSerializedList("0:1", "0:0", "items"),
-          ],
-          1
-        );
+      const {
+        storage,
+        expectStorage,
+        room,
+        refStorage,
+        onNextReconnectUseActorAndStorage,
+        ws,
+      } = await prepareStorageTest<{ items: LiveList<string> }>(
+        [
+          createSerializedObject("0:0", {}),
+          createSerializedList("0:1", "0:0", "items"),
+        ],
+        1
+      );
 
       const items = storage.root.get("items");
 
@@ -1340,7 +1346,8 @@ describe("room", () => {
         ],
       ];
 
-      reconnect(2, newInitStorage);
+      onNextReconnectUseActorAndStorage(2, newInitStorage);
+      room.connect(); // XXX Or should this be a reconnect now?
 
       expectStorage({
         items: ["A", "B"],
@@ -1398,10 +1405,11 @@ describe("room", () => {
     });
 
     test("disconnect and reconnect should keep user current presence", async () => {
-      const { room, refRoom, reconnect, ws } = await prepareStorageTest<
-        never,
-        { x: number }
-      >([createSerializedObject("0:0", {})], 1);
+      const { room, refRoom, onNextReconnectUseActorAndStorage, ws } =
+        await prepareStorageTest<never, { x: number }>(
+          [createSerializedObject("0:0", {})],
+          1
+        );
 
       room.updatePresence({ x: 1 });
 
@@ -1412,7 +1420,8 @@ describe("room", () => {
         })
       );
 
-      reconnect(2);
+      onNextReconnectUseActorAndStorage(2);
+      room.connect(); // XXX Or should this be a reconnect now?
 
       const refRoomOthers = refRoom.getOthers();
 
@@ -1435,11 +1444,17 @@ describe("room", () => {
     });
 
     test("hasPendingStorageModifications", async () => {
-      const { storage, expectStorage, room, refStorage, reconnect, ws } =
-        await prepareStorageTest<{ x: number }>(
-          [createSerializedObject("0:0", { x: 0 })],
-          1
-        );
+      const {
+        storage,
+        expectStorage,
+        room,
+        refStorage,
+        onNextReconnectUseActorAndStorage,
+        ws,
+      } = await prepareStorageTest<{ x: number }>(
+        [createSerializedObject("0:0", { x: 0 })],
+        1
+      );
 
       expectStorage({ x: 0 });
 
@@ -1470,7 +1485,8 @@ describe("room", () => {
         createSerializedObject("0:0", { x: 0 }),
       ];
 
-      reconnect(2, newInitStorage);
+      onNextReconnectUseActorAndStorage(2, newInitStorage);
+      room.connect(); // XXX Or should this be a reconnect now?
 
       expectStorage({
         x: 1,

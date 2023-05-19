@@ -226,11 +226,26 @@ function makeFakeRichToken(actor: number, scopes: string[]): RichToken {
  * Generates an authentication function, suitable for initializing
  * a ManagedSocket instance.
  *
- * This auth implementation will always succeed, and will authenticate as the
- * given actor/scopes.
+ * You can use the "next setters" to control what it will return the next time
+ * it will be accessed.
  */
-function fakeAuthenticateAs(actor: number, scopes: string[]) {
-  return () => Promise.resolve(makeFakeRichToken(actor, scopes));
+function authFactory(initialActor: number, initialScopes: string[]) {
+  let actor = initialActor;
+  let scopes = initialScopes;
+
+  return {
+    setNextActor(nextActor: number) {
+      actor = nextActor;
+    },
+
+    setNextScopes(nextScopes: string[]) {
+      scopes = nextScopes;
+    },
+
+    get() {
+      return Promise.resolve(makeFakeRichToken(actor, scopes));
+    },
+  };
 }
 
 type Callback<T> = (value: T) => void;
@@ -294,6 +309,9 @@ export async function prepareRoomWithStorage<
   const effects = mockEffects();
   (effects.send as jest.MockedFunction<any>).mockImplementation(onSend);
 
+  // Generate a fake "backend" pair
+  // XXX Perhaps name this "backend"?
+  const auth = authFactory(actor, scopes);
   const ws = socketFactory();
 
   const room = createRoom<TPresence, TStorage, TUserMeta, TRoomEvent>(
@@ -302,7 +320,7 @@ export async function prepareRoomWithStorage<
       initialStorage: defaultStorage || ({} as TStorage),
     },
     makeRoomConfig(effects, {
-      authenticate: fakeAuthenticateAs(actor, scopes),
+      authenticate: auth.get,
       createSocket: ws.newSocket,
     })
   );
@@ -320,7 +338,7 @@ export async function prepareRoomWithStorage<
   );
 
   const storage = await getStoragePromise;
-  return { storage, room, ws };
+  return { storage, room, auth, ws };
 }
 
 export async function prepareIsolatedStorageTest<TStorage extends LsonObject>(
@@ -377,14 +395,19 @@ export async function prepareStorageTest<
   let currentActor = actor;
   const operations: Op[] = [];
 
-  const { room: refRoom, storage: refStorage } = await prepareRoomWithStorage<
-    TPresence,
-    TStorage,
-    TUserMeta,
-    TRoomEvent
-  >(items, -1, undefined, undefined, scopes);
+  const {
+    room: refRoom,
+    storage: refStorage,
+    ws: refWs,
+  } = await prepareRoomWithStorage<TPresence, TStorage, TUserMeta, TRoomEvent>(
+    items,
+    -1,
+    undefined,
+    undefined,
+    scopes
+  );
 
-  const { room, storage, ws } = await prepareRoomWithStorage<
+  const { room, storage, auth, ws } = await prepareRoomWithStorage<
     TPresence,
     TStorage,
     TUserMeta,
@@ -478,36 +501,37 @@ export async function prepareStorageTest<
     }
   }
 
-  function reconnect(
+  function onNextReconnectUseActorAndStorage(
     actor: number,
-    newItems?: IdTuple<SerializedCrdt>[] | undefined
-  ): MockWebSocket {
+    newItems?: IdTuple<SerializedCrdt>[]
+  ) {
     currentActor = actor;
-    const ws = socketFactory(true);
-    room.connect();
-    room.__internal.send.authSuccess(makeRoomToken(actor, []), ws);
+    auth.setNextActor(actor);
 
     // Mock server messages for Presence.
     // Other user in the room (refRoom) recieves a "USER_JOINED" message.
-    refRoom.__internal.send.incomingMessage(
-      serverMessage({
-        type: ServerMsgCode.USER_JOINED,
-        actor,
-        id: undefined,
-        info: undefined,
-        scopes: [],
-      })
-    );
+    ws.onNextNewSocket((socket) => {
+      socket.simulateOpen();
 
-    if (newItems) {
-      room.__internal.send.incomingMessage(
+      refWs.current.simulateSendFromServer(
         serverMessage({
-          type: ServerMsgCode.INITIAL_STORAGE_STATE,
-          items: newItems,
+          type: ServerMsgCode.USER_JOINED,
+          actor,
+          id: undefined,
+          info: undefined,
+          scopes: [],
         })
       );
-    }
-    return ws;
+
+      if (newItems) {
+        socket.simulateSendFromServer(
+          serverMessage({
+            type: ServerMsgCode.INITIAL_STORAGE_STATE,
+            items: newItems,
+          })
+        );
+      }
+    });
   }
 
   return {
@@ -525,7 +549,7 @@ export async function prepareStorageTest<
           ops,
         })
       ),
-    reconnect,
+    onNextReconnectUseActorAndStorage,
     ws,
   };
 }
