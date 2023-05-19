@@ -1308,7 +1308,7 @@ describe("room", () => {
         items: ["A", "C"],
       });
 
-      ws.serverSide.close(
+      ws.current.serverSide.close(
         new CloseEvent("close", {
           code: WebsocketCloseCodes.CLOSE_ABNORMAL,
           wasClean: false,
