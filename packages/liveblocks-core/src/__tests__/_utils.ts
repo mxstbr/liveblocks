@@ -29,7 +29,6 @@ import type {
   IWebSocket,
   IWebSocketCloseEvent,
   IWebSocketEvent,
-  IWebSocketInstance,
   IWebSocketMessageEvent,
 } from "../types/IWebSocket";
 import type { JsonStorageUpdate } from "./_updatesUtils";
@@ -43,19 +42,6 @@ function makeRoomToken(actor: number, scopes: string[]): RoomAuthToken {
     actor,
     scopes,
   };
-}
-
-/**
- * Deep-clones a JSON-serializable value.
- *
- * NOTE: We should be able to replace `deepClone` by `structuredClone` once
- * we've upgraded to Node 18.
- */
-function deepClone<T extends Json>(items: T): T {
-  // NOTE: In this case, the combination of JSON.parse() and JSON.stringify
-  // won't lead to type unsafety, so this use case is okay.
-  // eslint-disable-next-line no-restricted-syntax
-  return JSON.parse(JSON.stringify(items)) as T;
 }
 
 type Listener = (ev: IWebSocketEvent) => void;
@@ -247,19 +233,28 @@ function fakeAuthenticateAs(actor: number, scopes: string[]) {
   return () => Promise.resolve(makeFakeRichToken(actor, scopes));
 }
 
+type Callback<T> = (value: T) => void;
+
 /**
  * Helper class that will allow you to manage a series of WebSocket
- * connections. Call `.newInstance()` to create a new mock WebSocket
- * instance. You can access the last-created instance through `.current`. You
- * can access _all_ historic instances through `.instances`.
+ * connections. Call `.newSocket()` to create a new mock WebSocket instance.
+ *
+ * You can access the last-created mock instance through `.current`.
+ * You can access _all_ historic instances through `.sockets`.
+ *
+ * When a new socket is instantiated, the provided initialization callback will
+ * get called, so you can control how the next-created new socket will behave
+ * in your unit test. By default, the WebSocket will simulate the server side
+ * automatically opening the connection.
+ *
+ * You can use this to implement a socket that will send a message after
+ * opening the connection too, for example.
  */
-function socketFactory(
-  // XXX Make autoOpen the default?
-  autoOpen: boolean
-) {
-  const sockets: IWebSocketInstance[] = [];
+function socketFactory() {
+  let init: Callback<MockWebSocket> = (socket) => void socket.simulateOpen();
+  const sockets: MockWebSocket[] = [];
   return {
-    instances: sockets,
+    sockets,
 
     get current() {
       const last = sockets[sockets.length - 1];
@@ -269,10 +264,15 @@ function socketFactory(
       return last;
     },
 
-    newInstance() {
-      const ws = new MockWebSocket("wss://ignored", autoOpen);
-      sockets.push(ws);
-      return ws;
+    onNextInit(callback: Callback<MockWebSocket>) {
+      init = callback;
+    },
+
+    newSocket() {
+      const socket = new MockWebSocket("wss://ignored");
+      sockets.push(socket);
+      init(socket);
+      return socket;
     },
   };
 }
@@ -292,7 +292,7 @@ export async function prepareRoomWithStorage<
   const effects = mockEffects();
   (effects.send as jest.MockedFunction<any>).mockImplementation(onSend);
 
-  const ws = socketFactory(/* autoOpen */ true);
+  const ws = socketFactory();
 
   const room = createRoom<TPresence, TStorage, TUserMeta, TRoomEvent>(
     {
@@ -301,7 +301,7 @@ export async function prepareRoomWithStorage<
     },
     makeRoomConfig(effects, {
       authenticate: fakeAuthenticateAs(actor, scopes),
-      createSocket: ws.newInstance,
+      createSocket: ws.newSocket,
     })
   );
 
