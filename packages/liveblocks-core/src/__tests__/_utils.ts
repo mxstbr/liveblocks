@@ -633,27 +633,20 @@ export async function prepareDisconnectedStorageUpdateTest<
   };
 }
 
-export function reconnect<
-  TPresence extends JsonObject,
-  TStorage extends LsonObject,
-  TUserMeta extends BaseUserMeta,
-  TRoomEvent extends Json
->(
-  room: Room<TPresence, TStorage, TUserMeta, TRoomEvent>,
-  actor: number,
+export function onNextConnectionSendInitialStorage(
+  ws: SocketFactory,
   newItems: IdTuple<SerializedCrdt>[]
 ) {
-  const ws = new MockWebSocket();
-  room.connect();
-  room.__internal.send.authSuccess(makeRoomToken(actor, []), ws);
-  ws.serverSide.accept();
-
-  room.__internal.send.incomingMessage(
-    serverMessage({
-      type: ServerMsgCode.INITIAL_STORAGE_STATE,
-      items: newItems,
-    })
-  );
+  // Change the behavior for the next socket that will be opened
+  ws.onNextNewSocket((socket) => {
+    socket.serverSide.accept();
+    socket.serverSide.send(
+      serverMessage({
+        type: ServerMsgCode.INITIAL_STORAGE_STATE,
+        items: newItems,
+      })
+    );
+  });
 }
 
 export function createSerializedObject(

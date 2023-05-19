@@ -5,7 +5,7 @@ import {
   prepareDisconnectedStorageUpdateTest,
   prepareIsolatedStorageTest,
   prepareStorageTest,
-  reconnect,
+  onNextConnectionSendInitialStorage,
 } from "../../__tests__/_utils";
 import { RoomScope } from "../../protocol/AuthToken";
 import { OpCode } from "../../protocol/Op";
@@ -905,15 +905,16 @@ describe("LiveObject", () => {
 
   describe("reconnect with remote changes and subscribe", () => {
     test("LiveObject updated", async () => {
-      const { expectStorage, room, root } = await prepareIsolatedStorageTest<{
-        obj: LiveObject<{ a: number }>;
-      }>(
-        [
-          createSerializedObject("0:0", {}),
-          createSerializedObject("0:1", { a: 1 }, "0:0", "obj"),
-        ],
-        1
-      );
+      const { expectStorage, room, root, ws } =
+        await prepareIsolatedStorageTest<{
+          obj: LiveObject<{ a: number }>;
+        }>(
+          [
+            createSerializedObject("0:0", {}),
+            createSerializedObject("0:1", { a: 1 }, "0:0", "obj"),
+          ],
+          1
+        );
 
       const rootDeepCallback = jest.fn();
       const liveObjectCallback = jest.fn();
@@ -943,7 +944,8 @@ describe("LiveObject", () => {
         ],
       ];
 
-      reconnect(room, 3, newInitStorage);
+      onNextConnectionSendInitialStorage(ws, newInitStorage);
+      room.reconnect();
 
       expectStorage({
         obj: { a: 2 },
@@ -963,15 +965,16 @@ describe("LiveObject", () => {
     });
 
     test("LiveObject updated nested", async () => {
-      const { expectStorage, room, root } = await prepareIsolatedStorageTest<{
-        obj: LiveObject<{ a: number; subObj?: LiveObject<{ b: number }> }>;
-      }>(
-        [
-          createSerializedObject("0:0", {}),
-          createSerializedObject("0:1", { a: 1 }, "0:0", "obj"),
-        ],
-        1
-      );
+      const { expectStorage, room, root, ws } =
+        await prepareIsolatedStorageTest<{
+          obj: LiveObject<{ a: number; subObj?: LiveObject<{ b: number }> }>;
+        }>(
+          [
+            createSerializedObject("0:0", {}),
+            createSerializedObject("0:1", { a: 1 }, "0:0", "obj"),
+          ],
+          1
+        );
 
       const rootDeepCallback = jest.fn();
       const liveObjectCallback = jest.fn();
@@ -1010,7 +1013,8 @@ describe("LiveObject", () => {
         ],
       ];
 
-      reconnect(room, 3, newInitStorage);
+      onNextConnectionSendInitialStorage(ws, newInitStorage);
+      room.reconnect();
 
       expectStorage({
         obj: { a: 1, subObj: { b: 1 } },

@@ -33,7 +33,7 @@ import {
   prepareIsolatedStorageTest,
   prepareStorageTest,
   prepareStorageUpdateTest,
-  reconnect,
+  onNextConnectionSendInitialStorage,
   serverMessage,
   waitFor,
   withDateNow,
@@ -1389,7 +1389,8 @@ describe("room", () => {
         ],
       ];
 
-      reconnect(room, 3, newInitStorage);
+      onNextConnectionSendInitialStorage(ws, newInitStorage);
+      room.reconnect();
 
       expectStorage({
         items2: ["B"],
@@ -1404,7 +1405,7 @@ describe("room", () => {
 
       room.updatePresence({ x: 1 });
 
-      ws.serverSide.close(
+      ws.current.serverSide.close(
         new CloseEvent("close", {
           code: WebsocketCloseCodes.CLOSE_ABNORMAL,
           wasClean: false,
@@ -1448,7 +1449,7 @@ describe("room", () => {
 
       room.events.storageStatus.subscribe(storageStatusCallback);
 
-      ws.serverSide.close(
+      ws.current.serverSide.close(
         new CloseEvent("close", {
           code: WebsocketCloseCodes.CLOSE_ABNORMAL,
           wasClean: false,

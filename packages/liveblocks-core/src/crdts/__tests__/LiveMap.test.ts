@@ -5,7 +5,7 @@ import {
   createSerializedRegister,
   prepareIsolatedStorageTest,
   prepareStorageTest,
-  reconnect,
+  onNextConnectionSendInitialStorage,
 } from "../../__tests__/_utils";
 import { RoomScope } from "../../protocol/AuthToken";
 import { OpCode } from "../../protocol/Op";
@@ -648,16 +648,17 @@ describe("LiveMap", () => {
 
   describe("reconnect with remote changes and subscribe", () => {
     test("Register added to map", async () => {
-      const { expectStorage, room, root } = await prepareIsolatedStorageTest<{
-        map: LiveMap<string, string>;
-      }>(
-        [
-          createSerializedObject("0:0", {}),
-          createSerializedMap("0:1", "0:0", "map"),
-          createSerializedRegister("0:2", "0:1", "first", "a"),
-        ],
-        1
-      );
+      const { expectStorage, room, root, ws } =
+        await prepareIsolatedStorageTest<{
+          map: LiveMap<string, string>;
+        }>(
+          [
+            createSerializedObject("0:0", {}),
+            createSerializedMap("0:1", "0:0", "map"),
+            createSerializedRegister("0:2", "0:1", "first", "a"),
+          ],
+          1
+        );
 
       const rootDeepCallback = jest.fn();
       const mapCallback = jest.fn();
@@ -699,7 +700,8 @@ describe("LiveMap", () => {
         ],
       ];
 
-      reconnect(room, 3, newInitStorage);
+      onNextConnectionSendInitialStorage(ws, newInitStorage);
+      room.reconnect();
 
       expectStorage({
         map: new Map([
