@@ -64,6 +64,8 @@ type MessageListener = (ev: IWebSocketMessageEvent) => void;
  * API for controlling behavior from the server.
  */
 type ServerSideController = {
+  readonly receivedMessages: string[];
+
   accept(): void;
   close(event: IWebSocketCloseEvent): void;
 };
@@ -77,7 +79,6 @@ export class MockWebSocket {
   readonly url: string;
 
   #readyState: number;
-  readonly sentMessages: string[] = [];
 
   readonly #closeListeners: CloseListener[] = [];
   readonly #errorListeners: Listener[] = [];
@@ -89,6 +90,8 @@ export class MockWebSocket {
     this.#readyState = this.CONNECTING;
 
     this.serverSide = {
+      receivedMessages: [],
+
       accept: () => {
         if (this.readyState > this.CONNECTING) {
           throw new Error(
@@ -161,17 +164,18 @@ export class MockWebSocket {
   }
 
   send(message: string) {
-    this.sentMessages.push(message);
+    if (this.readyState === this.OPEN) {
+      this.serverSide.receivedMessages.push(message);
+    }
   }
 
   close(_code?: number, _reason?: string): void {
     this.#readyState = this.CLOSED;
   }
 
-  //
-  // SIMULATION APIS
-  //
-
+  /**
+   * Control/simulate server-side behavior for this socket connection.
+   */
   serverSide: ServerSideController;
 }
 
