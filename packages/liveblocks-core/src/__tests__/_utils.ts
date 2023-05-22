@@ -235,6 +235,8 @@ function fakeAuthenticateAs(actor: number, scopes: string[]) {
 
 type Callback<T> = (value: T) => void;
 
+type SocketFactory = ReturnType<typeof socketFactory>;
+
 /**
  * Helper class that will allow you to manage a series of WebSocket
  * connections. Call `.newSocket()` to create a new mock WebSocket instance.
@@ -264,7 +266,7 @@ function socketFactory() {
       return last;
     },
 
-    onNextInit(callback: Callback<MockWebSocket>) {
+    onNextNewSocket(callback: Callback<MockWebSocket>) {
       init = callback;
     },
 
