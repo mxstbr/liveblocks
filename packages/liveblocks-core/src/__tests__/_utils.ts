@@ -60,6 +60,14 @@ type Listener = (ev: IWebSocketEvent) => void;
 type CloseListener = (ev: IWebSocketCloseEvent) => void;
 type MessageListener = (ev: IWebSocketMessageEvent) => void;
 
+/**
+ * API for controlling behavior from the server.
+ */
+type ServerSideController = {
+  accept(): void;
+  close(event: IWebSocketCloseEvent): void;
+};
+
 export class MockWebSocket {
   readonly CONNECTING = 0;
   readonly OPEN = 1;
@@ -80,9 +88,34 @@ export class MockWebSocket {
     this.url = url;
     this.#readyState = this.CONNECTING;
 
+    this.serverSide = {
+      accept: () => {
+        if (this.readyState > this.CONNECTING) {
+          throw new Error(
+            "Cannot open a WebSocket that has already advanced beyond the CONNECTING state"
+          );
+        }
+
+        this.#readyState = this.OPEN;
+        for (const callback of this.#openListeners) {
+          callback({ type: "open" });
+        }
+      },
+
+      /**
+       * Simulates a close of the connection by the server.
+       */
+      close: (event: IWebSocketCloseEvent) => {
+        this.#readyState = this.CLOSED;
+        for (const callback of this.#closeListeners) {
+          callback(event);
+        }
+      },
+    };
+
     if (autoOpen) {
       setTimeout(() => {
-        this.simulateOpen();
+        this.serverSide.accept();
       }, 0);
     }
   }
@@ -139,28 +172,7 @@ export class MockWebSocket {
   // SIMULATION APIS
   //
 
-  simulateOpen() {
-    if (this.readyState > this.CONNECTING) {
-      throw new Error(
-        "Cannot open a WebSocket that has already advanced beyond the CONNECTING state"
-      );
-    }
-
-    this.#readyState = this.OPEN;
-    for (const callback of this.#openListeners) {
-      callback({ type: "open" });
-    }
-  }
-
-  /**
-   * Simulates a close of the connection by the server.
-   */
-  simulateCloseFromServer(event: IWebSocketCloseEvent) {
-    this.#readyState = this.CLOSED;
-    for (const callback of this.#closeListeners) {
-      callback(event);
-    }
-  }
+  serverSide: ServerSideController;
 }
 
 // ------------------------------------------------------------------------
@@ -220,7 +232,7 @@ export async function prepareRoomWithStorage<
 
   room.__internal.send.connect();
   room.__internal.send.authSuccess(makeRoomToken(actor, scopes), ws);
-  ws.simulateOpen();
+  ws.serverSide.accept();
 
   // Start getting the storage, but don't await the promise just yet!
   const getStoragePromise = room.getStorage();
@@ -400,7 +412,7 @@ export async function prepareStorageTest<
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(makeRoomToken(actor, []), ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     // Mock server messages for Presence.
     // Other user in the room (refRoom) recieves a "USER_JOINED" message.
@@ -561,7 +573,7 @@ export function reconnect<
   const ws = new MockWebSocket();
   room.__internal.send.connect();
   room.__internal.send.authSuccess(makeRoomToken(actor, []), ws);
-  ws.simulateOpen();
+  ws.serverSide.accept();
 
   room.__internal.send.incomingMessage(
     serverMessage({

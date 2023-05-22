@@ -243,7 +243,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     expect(effects.send).toHaveBeenCalledWith([
       { type: ClientMsgCode.UPDATE_PRESENCE, targetActor: -1, data: { x: 0 } },
@@ -257,7 +257,7 @@ describe("room", () => {
     room.updatePresence({ x: 0 });
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     expect(effects.send).toHaveBeenCalledWith([
       { type: ClientMsgCode.UPDATE_PRESENCE, targetActor: -1, data: { x: 0 } },
@@ -270,7 +270,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     expect(effects.send).toHaveBeenCalledWith([
       { type: ClientMsgCode.UPDATE_PRESENCE, targetActor: -1, data: {} },
@@ -289,7 +289,7 @@ describe("room", () => {
     const now = Date.now();
 
     expect(effects.send).toHaveBeenCalledTimes(0);
-    ws.simulateOpen();
+    ws.serverSide.accept();
     expect(effects.send).toHaveBeenCalledTimes(1);
     expect(effects.send).toHaveBeenLastCalledWith([
       { type: ClientMsgCode.UPDATE_PRESENCE, targetActor: -1, data: { x: 0 } },
@@ -341,7 +341,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     room.__internal.send.incomingMessage(
       serverMessage({
@@ -377,7 +377,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     room.__internal.send.incomingMessage(
       serverMessage({
@@ -413,7 +413,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     room.__internal.send.incomingMessage(
       serverMessage({
@@ -449,7 +449,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     room.__internal.send.incomingMessage(
       serverMessage({
@@ -500,7 +500,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     room.__internal.send.incomingMessage(
       serverMessage({
@@ -567,7 +567,7 @@ describe("room", () => {
 
       const now = new Date(2021, 1, 1, 0, 0, 0, 0).getTime();
 
-      withDateNow(now, () => ws.simulateOpen());
+      withDateNow(now, () => ws.serverSide.accept());
 
       expect(effects.send).nthCalledWith(1, [
         { type: ClientMsgCode.UPDATE_PRESENCE, targetActor: -1, data: {} },
@@ -603,7 +603,7 @@ describe("room", () => {
       const ws = new MockWebSocket();
       room.__internal.send.connect();
       room.__internal.send.authSuccess(defaultRoomToken, ws);
-      ws.simulateOpen();
+      ws.serverSide.accept();
 
       expect(effects.send).toBeCalledTimes(1);
       expect(effects.send).toHaveBeenCalledWith([
@@ -624,7 +624,7 @@ describe("room", () => {
       const ws = new MockWebSocket();
       room.__internal.send.connect();
       room.__internal.send.authSuccess(defaultRoomToken, ws);
-      ws.simulateOpen();
+      ws.serverSide.accept();
 
       expect(effects.send).toBeCalledTimes(1);
       expect(effects.send).toHaveBeenCalledWith([
@@ -640,7 +640,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     const getStoragePromise = room.getStorage();
 
@@ -662,7 +662,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     expect(room.__internal.buffer.me).toEqual(null);
     room.updatePresence({ x: 0 }, { addToHistory: true });
@@ -717,7 +717,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     const getStoragePromise = room.getStorage();
 
@@ -751,7 +751,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     room.updatePresence({ x: 0 }, { addToHistory: true });
     room.updatePresence({ x: 1 }, { addToHistory: true });
@@ -772,7 +772,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     room.updatePresence({ x: 0 });
     room.updatePresence({ x: 1 });
@@ -788,7 +788,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     room.updatePresence({ x: 0 }, { addToHistory: true });
     expect(room.__internal.buffer.me?.data).toEqual({ x: 0 });
@@ -822,7 +822,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     room.updatePresence({ x: 0 }, { addToHistory: true });
 
@@ -846,7 +846,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     const getStoragePromise = room.getStorage();
 
@@ -887,7 +887,7 @@ describe("room", () => {
     const ws = new MockWebSocket();
     room.__internal.send.connect();
     room.__internal.send.authSuccess(defaultRoomToken, ws);
-    ws.simulateOpen();
+    ws.serverSide.accept();
 
     const getStoragePromise = room.getStorage();
 
@@ -953,7 +953,7 @@ describe("room", () => {
       const ws = new MockWebSocket();
       room.__internal.send.connect();
       room.__internal.send.authSuccess(defaultRoomToken, ws);
-      ws.simulateOpen();
+      ws.serverSide.accept();
 
       const getStoragePromise = room.getStorage();
 
@@ -1187,7 +1187,7 @@ describe("room", () => {
       const ws = new MockWebSocket();
       room.__internal.send.connect();
       room.__internal.send.authSuccess(defaultRoomToken, ws);
-      ws.simulateOpen();
+      ws.serverSide.accept();
 
       let others: Others<P, never> | undefined;
 
@@ -1238,7 +1238,7 @@ describe("room", () => {
       const ws = new MockWebSocket();
       room.__internal.send.connect();
       room.__internal.send.authSuccess(defaultRoomToken, ws);
-      ws.simulateOpen();
+      ws.serverSide.accept();
 
       const callback = jest.fn();
       room.events.customEvent.subscribe(callback);
@@ -1308,7 +1308,7 @@ describe("room", () => {
         items: ["A", "C"],
       });
 
-      ws.simulateCloseFromServer(
+      ws.serverSide.close(
         new CloseEvent("close", {
           code: WebsocketCloseCodes.CLOSE_ABNORMAL,
           wasClean: false,
@@ -1404,7 +1404,7 @@ describe("room", () => {
 
       room.updatePresence({ x: 1 });
 
-      ws.simulateCloseFromServer(
+      ws.serverSide.close(
         new CloseEvent("close", {
           code: WebsocketCloseCodes.CLOSE_ABNORMAL,
           wasClean: false,
@@ -1448,7 +1448,7 @@ describe("room", () => {
 
       room.events.storageStatus.subscribe(storageStatusCallback);
 
-      ws.simulateCloseFromServer(
+      ws.serverSide.close(
         new CloseEvent("close", {
           code: WebsocketCloseCodes.CLOSE_ABNORMAL,
           wasClean: false,
@@ -1503,9 +1503,9 @@ describe("room", () => {
       const ws = new MockWebSocket();
       room.__internal.send.connect();
       room.__internal.send.authSuccess(defaultRoomToken, ws);
-      ws.simulateOpen();
+      ws.serverSide.accept();
 
-      ws.simulateCloseFromServer(
+      ws.serverSide.close(
         new CloseEvent("close", {
           code: 1006,
           wasClean: false,
@@ -1525,9 +1525,9 @@ describe("room", () => {
       const ws = new MockWebSocket();
       room.__internal.send.connect();
       room.__internal.send.authSuccess(defaultRoomToken, ws);
-      ws.simulateOpen();
+      ws.serverSide.accept();
 
-      ws.simulateCloseFromServer(
+      ws.serverSide.close(
         new CloseEvent("close", {
           code: 4002,
           wasClean: false,
@@ -1552,7 +1552,7 @@ describe("room", () => {
       room.__internal.send.authSuccess(defaultRoomToken, ws);
       expect(room.getConnectionState()).toBe("connecting");
 
-      ws.simulateOpen();
+      ws.serverSide.accept();
       expect(room.getConnectionState()).toBe("open");
 
       room.reconnect();
@@ -1562,7 +1562,7 @@ describe("room", () => {
       room.__internal.send.authSuccess(defaultRoomToken, ws2);
       expect(room.getConnectionState()).toBe("connecting");
 
-      ws2.simulateOpen();
+      ws2.serverSide.accept();
       expect(room.getConnectionState()).toBe("open");
     });
   });
@@ -1579,7 +1579,7 @@ describe("room", () => {
       const ws = new MockWebSocket();
       room.__internal.send.connect();
       room.__internal.send.authSuccess(defaultRoomToken, ws);
-      ws.simulateOpen();
+      ws.serverSide.accept();
 
       let others: Others<P, M> | undefined;
 

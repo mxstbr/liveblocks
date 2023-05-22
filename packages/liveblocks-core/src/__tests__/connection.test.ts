@@ -39,7 +39,7 @@ describe("ManagedSocket", () => {
     const createSocket = () => {
       lastSocket = new MockWebSocket();
       setTimeout(() => {
-        lastSocket.simulateOpen();
+        lastSocket.serverSide.accept();
       }, 500);
       return lastSocket;
     };
