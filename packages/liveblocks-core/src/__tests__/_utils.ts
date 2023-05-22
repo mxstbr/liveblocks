@@ -68,9 +68,16 @@ type ServerSideController = {
 
   accept(): void;
   close(event: IWebSocketCloseEvent): void;
+  send(event: IWebSocketMessageEvent): void;
+  error(event: IWebSocketEvent): void;
 };
 
 export class MockWebSocket {
+  /**
+   * Control/simulate server-side behavior for this socket connection.
+   */
+  serverSide: ServerSideController;
+
   readonly CONNECTING = 0;
   readonly OPEN = 1;
   readonly CLOSING = 2;
@@ -89,6 +96,7 @@ export class MockWebSocket {
     this.url = url;
     this.#readyState = this.CONNECTING;
 
+    /** Simulation of server-side behavior. */
     this.serverSide = {
       receivedMessages: [],
 
@@ -101,16 +109,29 @@ export class MockWebSocket {
 
         this.#readyState = this.OPEN;
         for (const callback of this.#openListeners) {
-          callback({ type: "open" });
+          callback(new Event("open"));
         }
       },
 
-      /**
-       * Simulates a close of the connection by the server.
-       */
       close: (event: IWebSocketCloseEvent) => {
         this.#readyState = this.CLOSED;
         for (const callback of this.#closeListeners) {
+          callback(event);
+        }
+      },
+
+      send: (event: IWebSocketMessageEvent) => {
+        if (this.readyState > this.CONNECTING) {
+          throw new Error("Socket hasn't been opened yet");
+        }
+
+        for (const callback of this.#messageListeners) {
+          callback(event);
+        }
+      },
+
+      error: (event: IWebSocketEvent) => {
+        for (const callback of this.#errorListeners) {
           callback(event);
         }
       },
@@ -166,11 +187,6 @@ export class MockWebSocket {
   close(_code?: number, _reason?: string): void {
     this.#readyState = this.CLOSED;
   }
-
-  /**
-   * Control/simulate server-side behavior for this socket connection.
-   */
-  serverSide: ServerSideController;
 }
 
 // ------------------------------------------------------------------------
